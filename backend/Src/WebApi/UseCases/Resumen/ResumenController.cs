@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebApi.UseCases.Resumen;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/resumen")]
 [Authorize]
 public class ResumenController : ControllerBase
 {

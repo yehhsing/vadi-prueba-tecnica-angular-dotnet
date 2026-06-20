@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebApi.UseCases.Tareas;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/tareas")]
 [Authorize]
 public class TareasController : ControllerBase
 {
