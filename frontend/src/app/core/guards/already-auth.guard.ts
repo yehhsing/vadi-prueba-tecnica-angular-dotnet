@@ -18,6 +18,18 @@ import { selectIsAuthenticated } from '../../state/session-state/redux/selectors
  * Apply this guard to the /login route in app.routes.ts.
  */
 export const alreadyAuthGuard: CanActivateFn = () => {
-  // TODO: implement
-  return true;
+  const store = inject(Store);
+  const router = inject(Router);
+
+  return store.select(selectIsAuthenticated).pipe(
+    take(1),
+    map(isAuthenticated => {
+      if (isAuthenticated) {
+        router.navigate(['/home']);
+        return false;
+      }
+
+      return true;
+    })
+  );
 };

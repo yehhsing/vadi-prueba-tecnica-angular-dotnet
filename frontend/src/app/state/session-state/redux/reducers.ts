@@ -1,9 +1,9 @@
 import { createReducer, on } from '@ngrx/store';
-import { initialSessionState } from './state';
+import { hydratedSessionState, initialSessionState } from './state';
 import * as SessionActions from './actions/session.actions';
 
 export const sessionReducer = createReducer(
-  initialSessionState,
+  hydratedSessionState,
   on(SessionActions.loginSuccess, (state, { token, nombre, email, rol }) => ({
     ...state,
     token,

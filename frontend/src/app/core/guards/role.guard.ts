@@ -1,7 +1,7 @@
  import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { map } from 'rxjs';
+import { map, take } from 'rxjs';
 import { selectRol } from '../../state/session-state/redux/selectors';
 
 /**
@@ -23,6 +23,7 @@ export const roleGuard: CanActivateFn = (route) => {
   const allowedRoles: string[] = route.data?.['roles'] ?? [];
 
   return store.select(selectRol).pipe(
+    take(1),
     map((rol: string | null) => {
       if (!rol || !allowedRoles.includes(rol)) {
         router.navigate(['/forbidden']);

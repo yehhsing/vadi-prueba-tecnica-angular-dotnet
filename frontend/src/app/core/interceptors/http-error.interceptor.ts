@@ -3,6 +3,7 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
+import * as SessionActions from '../../state/session-state/redux/actions/session.actions';
 
 /**
  * TODO: Implement HTTP error interceptor.
@@ -31,6 +32,20 @@ import { Store } from '@ngrx/store';
  *   );
  */
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
-  // TODO: implement
-  return next(req);
+  const router = inject(Router);
+  const store = inject(Store);
+
+  return next(req).pipe(
+    catchError((error: HttpErrorResponse) => {
+      if (error.status === 401) {
+        store.dispatch(SessionActions.logout());
+      } else if (error.status === 403) {
+        router.navigate(['/forbidden']);
+      } else if (error.status === 0 || error.status >= 500) {
+        console.error('HTTP error', error);
+      }
+
+      return throwError(() => error);
+    })
+  );
 };
