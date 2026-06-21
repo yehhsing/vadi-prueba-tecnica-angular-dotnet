@@ -23,8 +23,8 @@ public static class DependencyInjection
 
         // TODO: Register your repository implementations here.
         // Example:
-         services.AddScoped<IProyectoRepository, ProyectoRepository>();
-        // services.AddScoped<ITareaRepository, TareaRepository>();
+        services.AddScoped<IProyectoRepository, ProyectoRepository>();
+        services.AddScoped<ITareaRepository, TareaRepository>();
         // services.AddScoped<IResumenRepository, ResumenRepository>();
 
         return services;
