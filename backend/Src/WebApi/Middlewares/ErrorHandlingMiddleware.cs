@@ -21,10 +21,9 @@ public class ErrorHandlingMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        await _next(context);
-
         try
         {
+            await _next(context);
         }
         catch (BusinessException ex)
         {
