@@ -516,3 +516,45 @@ BEGIN
     WHERE Id = @Id;
 END
 GO
+
+-- ============================================================
+-- Resumen
+-- ============================================================
+
+CREATE OR ALTER PROCEDURE sp_ObtenerResumen
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    ;WITH ResumenProyectos AS (
+        SELECT
+            SUM(CASE WHEN e.Nombre NOT IN ('Completada', 'Cancelada') THEN 1 ELSE 0 END) AS ProyectosActivos
+        FROM Proyectos p
+        INNER JOIN Estados e ON e.Id = p.EstadoId
+    ),
+    ResumenTareasPorEstado AS (
+        SELECT
+            e.Nombre AS EstadoNombre,
+            COUNT(1) AS Total
+        FROM Tareas t
+        INNER JOIN Estados e ON e.Id = t.EstadoId
+        GROUP BY e.Nombre
+    ),
+    ResumenTareasVencidas AS (
+        SELECT
+            COUNT(1) AS TareasVencidas
+        FROM Tareas t
+        INNER JOIN Estados e ON e.Id = t.EstadoId
+        WHERE t.FechaLimite < CAST(GETDATE() AS DATE)
+          AND e.Nombre NOT IN ('Completada', 'Cancelada')
+    )
+    SELECT
+        ISNULL(rp.ProyectosActivos, 0) AS ProyectosActivos,
+        ISNULL(rtv.TareasVencidas, 0) AS TareasVencidas,
+        ISNULL(SUM(CASE WHEN rte.EstadoNombre = 'Pendiente' THEN rte.Total ELSE 0 END), 0) AS TareasPendientes
+    FROM ResumenProyectos rp
+    CROSS JOIN ResumenTareasVencidas rtv
+    LEFT JOIN ResumenTareasPorEstado rte ON 1 = 1
+    GROUP BY rp.ProyectosActivos, rtv.TareasVencidas;
+END
+GO
