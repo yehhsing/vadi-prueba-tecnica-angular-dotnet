@@ -1,3 +1,5 @@
+using Application.Common.Models;
+using Application.UseCases.Resumen;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,8 +10,17 @@ namespace WebApi.UseCases.Resumen;
 [Authorize]
 public class ResumenController : ControllerBase
 {
-    // TODO: Inject and use IGetResumenUseCase here.
-    //
-    // Required endpoint:
-    //   GET /api/resumen  — returns ProyectosActivos, TareasVencidas, TareasPendientes (all roles)
+    private readonly IGetResumenUseCase _getResumenUseCase;
+
+    public ResumenController(IGetResumenUseCase getResumenUseCase)
+    {
+        _getResumenUseCase = getResumenUseCase;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Get()
+    {
+        var result = await _getResumenUseCase.Execute();
+        return Ok(ApiResponse<ResumenDto>.Ok(result));
+    }
 }
