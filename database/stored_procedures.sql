@@ -197,7 +197,10 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER PROCEDURE sp_ProyectoTieneTareasPendientesOEnProgreso
+DROP PROCEDURE IF EXISTS dbo.usp_ProyectoTieneTareasPendientesOEnProgreso;
+GO
+
+CREATE PROCEDURE dbo.usp_ProyectoTieneTareasPendientesOEnProgreso
     @ProyectoId INT
 AS
 BEGIN
@@ -206,8 +209,8 @@ BEGIN
     SELECT CAST(
         CASE WHEN EXISTS (
             SELECT 1
-            FROM Tareas t
-            INNER JOIN Estados e ON e.Id = t.EstadoId
+            FROM dbo.Tareas t
+            INNER JOIN dbo.Estados e ON e.Id = t.EstadoId
             WHERE t.ProyectoId = @ProyectoId
               AND e.Nombre IN ('Pendiente', 'En Progreso')
         )
@@ -216,7 +219,10 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER PROCEDURE sp_ProyectoTieneTareasNoFinalizadas
+DROP PROCEDURE IF EXISTS dbo.usp_ProyectoTieneTareasNoFinalizadas;
+GO
+
+CREATE PROCEDURE dbo.usp_ProyectoTieneTareasNoFinalizadas
     @ProyectoId INT
 AS
 BEGIN
@@ -225,12 +231,288 @@ BEGIN
     SELECT CAST(
         CASE WHEN EXISTS (
             SELECT 1
-            FROM Tareas t
-            INNER JOIN Estados e ON e.Id = t.EstadoId
+            FROM dbo.Tareas t
+            INNER JOIN dbo.Estados e ON e.Id = t.EstadoId
             WHERE t.ProyectoId = @ProyectoId
               AND e.Nombre NOT IN ('Completada', 'Cancelada')
         )
         THEN 1 ELSE 0 END
     AS BIT) AS TieneTareas;
+END
+GO
+
+-- ============================================================
+-- Tareas
+-- ============================================================
+
+CREATE OR ALTER PROCEDURE sp_ListarTareasPorProyectoPaginado
+    @ProyectoId INT,
+    @Pagina INT = 1,
+    @TamanoPagina INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @Pagina < 1 SET @Pagina = 1;
+    IF @TamanoPagina < 1 SET @TamanoPagina = 10;
+
+    DECLARE @Offset INT = (@Pagina - 1) * @TamanoPagina;
+
+    SELECT
+        t.Id,
+        t.ProyectoId,
+        p.Nombre AS ProyectoNombre,
+        t.Titulo,
+        t.Descripcion,
+        t.PrioridadId,
+        pr.Nombre AS PrioridadNombre,
+        t.EstadoId,
+        e.Nombre AS EstadoNombre,
+        t.UsuarioAsignadoId,
+        u.Nombre AS UsuarioAsignadoNombre,
+        t.FechaLimite,
+        t.FechaCreacion
+    FROM Tareas t
+    INNER JOIN Proyectos p ON p.Id = t.ProyectoId
+    INNER JOIN Prioridades pr ON pr.Id = t.PrioridadId
+    INNER JOIN Estados e ON e.Id = t.EstadoId
+    LEFT JOIN Usuarios u ON u.Id = t.UsuarioAsignadoId
+    WHERE t.ProyectoId = @ProyectoId
+    ORDER BY t.FechaLimite, t.Id
+    OFFSET @Offset ROWS
+    FETCH NEXT @TamanoPagina ROWS ONLY;
+
+    SELECT COUNT(1) AS TotalRegistros
+    FROM Tareas
+    WHERE ProyectoId = @ProyectoId;
+END
+GO
+
+CREATE OR ALTER PROCEDURE sp_ObtenerTareaPorId
+    @Id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        t.Id,
+        t.ProyectoId,
+        p.Nombre AS ProyectoNombre,
+        t.Titulo,
+        t.Descripcion,
+        t.PrioridadId,
+        pr.Nombre AS PrioridadNombre,
+        t.EstadoId,
+        e.Nombre AS EstadoNombre,
+        t.UsuarioAsignadoId,
+        u.Nombre AS UsuarioAsignadoNombre,
+        t.FechaLimite,
+        t.FechaCreacion
+    FROM Tareas t
+    INNER JOIN Proyectos p ON p.Id = t.ProyectoId
+    INNER JOIN Prioridades pr ON pr.Id = t.PrioridadId
+    INNER JOIN Estados e ON e.Id = t.EstadoId
+    LEFT JOIN Usuarios u ON u.Id = t.UsuarioAsignadoId
+    WHERE t.Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE sp_InsertarTarea
+    @ProyectoId INT,
+    @Titulo NVARCHAR(150),
+    @Descripcion NVARCHAR(500) = NULL,
+    @PrioridadId INT,
+    @EstadoId INT = NULL,
+    @UsuarioAsignadoId INT = NULL,
+    @FechaLimite DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @EstadoPendienteId INT;
+
+    SELECT @EstadoPendienteId = Id
+    FROM Estados
+    WHERE Nombre = 'Pendiente';
+
+    IF @EstadoPendienteId IS NULL
+    BEGIN
+        RAISERROR('No existe el estado Pendiente.', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM Proyectos WHERE Id = @ProyectoId)
+    BEGIN
+        RAISERROR('Proyecto no encontrado.', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM Prioridades WHERE Id = @PrioridadId)
+    BEGIN
+        RAISERROR('Prioridad no encontrada.', 16, 1);
+        RETURN;
+    END
+
+    IF @UsuarioAsignadoId IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM Usuarios WHERE Id = @UsuarioAsignadoId)
+    BEGIN
+        RAISERROR('Usuario asignado no encontrado.', 16, 1);
+        RETURN;
+    END
+
+    INSERT INTO Tareas (
+        ProyectoId,
+        Titulo,
+        Descripcion,
+        PrioridadId,
+        EstadoId,
+        UsuarioAsignadoId,
+        FechaLimite
+    )
+    OUTPUT INSERTED.Id
+    VALUES (
+        @ProyectoId,
+        @Titulo,
+        @Descripcion,
+        @PrioridadId,
+        @EstadoPendienteId,
+        @UsuarioAsignadoId,
+        @FechaLimite
+    );
+END
+GO
+
+CREATE OR ALTER PROCEDURE sp_ActualizarTarea
+    @Id INT,
+    @ProyectoId INT,
+    @Titulo NVARCHAR(150),
+    @Descripcion NVARCHAR(500) = NULL,
+    @PrioridadId INT,
+    @EstadoId INT = NULL,
+    @UsuarioAsignadoId INT = NULL,
+    @FechaLimite DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @EstadoFinalId INT;
+
+    IF NOT EXISTS (SELECT 1 FROM Tareas WHERE Id = @Id)
+    BEGIN
+        RAISERROR('Tarea no encontrada.', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM Proyectos WHERE Id = @ProyectoId)
+    BEGIN
+        RAISERROR('Proyecto no encontrado.', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM Prioridades WHERE Id = @PrioridadId)
+    BEGIN
+        RAISERROR('Prioridad no encontrada.', 16, 1);
+        RETURN;
+    END
+
+    IF @UsuarioAsignadoId IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM Usuarios WHERE Id = @UsuarioAsignadoId)
+    BEGIN
+        RAISERROR('Usuario asignado no encontrado.', 16, 1);
+        RETURN;
+    END
+
+    IF @EstadoId IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM Estados WHERE Id = @EstadoId)
+    BEGIN
+        RAISERROR('Estado no encontrado.', 16, 1);
+        RETURN;
+    END
+
+    SELECT @EstadoFinalId = COALESCE(@EstadoId, EstadoId)
+    FROM Tareas
+    WHERE Id = @Id;
+
+    IF EXISTS (
+        SELECT 1
+        FROM Estados estadoTarea
+        INNER JOIN Proyectos p ON p.Id = @ProyectoId
+        INNER JOIN Estados estadoProyecto ON estadoProyecto.Id = p.EstadoId
+        WHERE estadoTarea.Id = @EstadoFinalId
+          AND estadoTarea.Nombre = 'Completada'
+          AND estadoProyecto.Nombre = 'Cancelada'
+    )
+    BEGIN
+        RAISERROR('No se puede completar una tarea si su proyecto esta cancelado.', 16, 1);
+        RETURN;
+    END
+
+    UPDATE Tareas
+    SET
+        ProyectoId = @ProyectoId,
+        Titulo = @Titulo,
+        Descripcion = @Descripcion,
+        PrioridadId = @PrioridadId,
+        EstadoId = @EstadoFinalId,
+        UsuarioAsignadoId = @UsuarioAsignadoId,
+        FechaLimite = @FechaLimite
+    WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE sp_EliminarTarea
+    @Id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM Tareas WHERE Id = @Id)
+    BEGIN
+        RAISERROR('Tarea no encontrada.', 16, 1);
+        RETURN;
+    END
+
+    DELETE FROM Tareas
+    WHERE Id = @Id;
+END
+GO
+
+CREATE OR ALTER PROCEDURE sp_CambiarEstadoTarea
+    @Id INT,
+    @EstadoId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM Tareas WHERE Id = @Id)
+    BEGIN
+        RAISERROR('Tarea no encontrada.', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM Estados WHERE Id = @EstadoId)
+    BEGIN
+        RAISERROR('Estado no encontrado.', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1
+        FROM Tareas t
+        INNER JOIN Proyectos p ON p.Id = t.ProyectoId
+        INNER JOIN Estados estadoProyecto ON estadoProyecto.Id = p.EstadoId
+        INNER JOIN Estados estadoTarea ON estadoTarea.Id = @EstadoId
+        WHERE t.Id = @Id
+          AND estadoTarea.Nombre = 'Completada'
+          AND estadoProyecto.Nombre = 'Cancelada'
+    )
+    BEGIN
+        RAISERROR('No se puede completar una tarea si su proyecto esta cancelado.', 16, 1);
+        RETURN;
+    END
+
+    UPDATE Tareas
+    SET EstadoId = @EstadoId
+    WHERE Id = @Id;
 END
 GO
