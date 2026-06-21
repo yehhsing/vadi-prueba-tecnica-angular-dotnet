@@ -25,7 +25,7 @@ public static class DependencyInjection
         // Example:
         services.AddScoped<IProyectoRepository, ProyectoRepository>();
         services.AddScoped<ITareaRepository, TareaRepository>();
-        // services.AddScoped<IResumenRepository, ResumenRepository>();
+        services.AddScoped<IResumenRepository, ResumenRepository>();
 
         return services;
     }
