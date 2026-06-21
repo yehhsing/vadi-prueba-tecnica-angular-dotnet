@@ -1,5 +1,6 @@
 using Application.UseCases.Auth.Login;
 using Application.UseCases.Proyectos;
+using Application.UseCases.Resumen;
 using Application.UseCases.Tareas;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<IUpdateTareaUseCase, UpdateTareaUseCase>();
         services.AddScoped<IDeleteTareaUseCase, DeleteTareaUseCase>();
         services.AddScoped<IChangeEstadoTareaUseCase, ChangeEstadoTareaUseCase>();
+
+        services.AddScoped<IGetResumenUseCase, GetResumenUseCase>();
 
         return services;
     }
