@@ -19,12 +19,9 @@ import { MatSelectModule } from "@angular/material/select";
 import { MatTableModule } from "@angular/material/table";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { Store } from "@ngrx/store";
-import { combineLatest, map, Observable, take } from "rxjs";
+import { combineLatest, map, Observable } from "rxjs";
 import { Proyecto } from "../../core/models/api.models";
-import {
-  selectRol,
-  selectToken,
-} from "../../state/session-state/redux/selectors";
+import { selectRol } from "../../state/session-state/redux/selectors";
 import * as ProyectosActions from "../../state/proyectos-state/redux/actions/proyectos.actions";
 import {
   selectProyectoDeletingId,
@@ -581,32 +578,12 @@ export class ProyectosComponent implements OnInit {
       return;
     }
 
-    this.store
-      .select(selectToken)
-      .pipe(take(1))
-      .subscribe((token) => {
-        const creadoPorId = this.getUsuarioIdFromToken(token);
-
-        if (!creadoPorId) {
-          this.store.dispatch(
-            ProyectosActions.createProyectoFailure({
-              error:
-                "No se pudo identificar el usuario creador desde la sesion.",
-            }),
-          );
-          return;
-        }
-
-        this.store.dispatch(
-          ProyectosActions.createProyecto({
-            payload: {
-              ...basePayload,
-              creadoPorId,
-            },
-          }),
-        );
-        this.showForm = false;
-      });
+    this.store.dispatch(
+      ProyectosActions.createProyecto({
+        payload: basePayload,
+      }),
+    );
+    this.showForm = false;
   }
 
   pageChanged(event: PageEvent): void {
@@ -645,19 +622,4 @@ export class ProyectosComponent implements OnInit {
     return value ? value.substring(0, 10) : "";
   }
 
-  private getUsuarioIdFromToken(token: string | null): number | null {
-    if (!token) {
-      return null;
-    }
-
-    try {
-      const [, payload] = token.split(".");
-      const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-      const parsed = JSON.parse(atob(normalized)) as { sub?: string };
-      const id = Number(parsed.sub);
-      return Number.isFinite(id) ? id : null;
-    } catch {
-      return null;
-    }
-  }
 }

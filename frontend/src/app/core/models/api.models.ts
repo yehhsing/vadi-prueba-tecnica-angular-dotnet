@@ -51,7 +51,6 @@ export interface CreateProyectoRequest {
   fechaInicio: string;
   fechaFin: string;
   estadoId: number;
-  creadoPorId: number;
 }
 
 export interface UpdateProyectoRequest {

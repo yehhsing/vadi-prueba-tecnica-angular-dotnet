@@ -1,10 +1,8 @@
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import {
-  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators
 } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -20,7 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Store } from '@ngrx/store';
-import { combineLatest, map, Observable } from 'rxjs';
+import { combineLatest, map, Observable, take } from 'rxjs';
 import { Proyecto, Tarea } from '../../core/models/api.models';
 import { selectRol } from '../../state/session-state/redux/selectors';
 import * as ProyectosActions from '../../state/proyectos-state/redux/actions/proyectos.actions';
@@ -139,21 +137,19 @@ import {
               </mat-form-field>
 
               <mat-form-field appearance="outline">
-                <mat-label>Estado</mat-label>
-                <mat-select formControlName="estadoId">
-                  @for (estado of estados; track estado.id) {
-                    <mat-option [value]="estado.id">{{
-                      estado.nombre
-                    }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
                 <mat-label>Usuario asignado ID</mat-label>
-                <input matInput type="number" formControlName="usuarioAsignadoId" />
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  max="3"
+                  formControlName="usuarioAsignadoId"
+                />
                 @if (form.controls.usuarioAsignadoId.hasError('min')) {
                   <mat-error>El ID debe ser mayor a cero.</mat-error>
+                }
+                @if (form.controls.usuarioAsignadoId.hasError('max')) {
+                  <mat-error>Solo se permiten usuarios del 1 al 3.</mat-error>
                 }
               </mat-form-field>
 
@@ -570,11 +566,9 @@ export class TareasComponent implements OnInit {
       titulo: ['', [Validators.required, Validators.minLength(3)]],
       descripcion: [''],
       prioridadId: [2, Validators.required],
-      estadoId: [1, Validators.required],
-      usuarioAsignadoId: [null as number | null, Validators.min(1)],
+      usuarioAsignadoId: [null as number | null, [Validators.min(1), Validators.max(3)]],
       fechaLimite: ['', Validators.required]
-    },
-    { validators: this.estadoProyectoValidator.bind(this) }
+    }
   );
 
   ngOnInit(): void {
@@ -603,7 +597,6 @@ export class TareasComponent implements OnInit {
       titulo: '',
       descripcion: '',
       prioridadId: 2,
-      estadoId: 1,
       usuarioAsignadoId: null,
       fechaLimite: ''
     });
@@ -617,7 +610,6 @@ export class TareasComponent implements OnInit {
       titulo: tarea.titulo,
       descripcion: tarea.descripcion ?? '',
       prioridadId: tarea.prioridadId,
-      estadoId: tarea.estadoId,
       usuarioAsignadoId: tarea.usuarioAsignadoId,
       fechaLimite: this.toDateInput(tarea.fechaLimite)
     });
@@ -650,7 +642,7 @@ export class TareasComponent implements OnInit {
       titulo: value.titulo?.trim() ?? '',
       descripcion: value.descripcion?.trim() || null,
       prioridadId: value.prioridadId ?? 2,
-      estadoId: value.estadoId ?? 1,
+      estadoId: null,
       usuarioAsignadoId: this.toNullableNumber(value.usuarioAsignadoId),
       fechaLimite: value.fechaLimite ?? ''
     };
@@ -698,20 +690,24 @@ export class TareasComponent implements OnInit {
       return;
     }
 
-    if (estadoId === 3 && this.isProyectoCanceladoFromSnapshot()) {
-      const confirmed = window.confirm(
-        'El proyecto esta cancelado. El backend puede rechazar completar esta tarea. Deseas continuar?'
-      );
-
-      if (!confirmed) {
-        return;
-      }
+    if (estadoId !== 3) {
+      this.dispatchChangeEstado(tarea, estadoId);
+      return;
     }
 
-    this.store.dispatch(TareasActions.changeEstadoTarea({
-      id: tarea.id,
-      payload: { estadoId }
-    }));
+    this.proyecto$.pipe(take(1)).subscribe(proyecto => {
+      if (proyecto?.estadoId === 4) {
+        const confirmed = window.confirm(
+          'El proyecto esta cancelado. El backend rechazara completar esta tarea. Deseas continuar?'
+        );
+
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      this.dispatchChangeEstado(tarea, estadoId);
+    });
   }
 
   getEstadoOptionsForTarea(tarea: Tarea): typeof this.estados {
@@ -747,26 +743,6 @@ export class TareasComponent implements OnInit {
     return limite < today;
   }
 
-  private estadoProyectoValidator(control: AbstractControl): ValidationErrors | null {
-    const estadoId = control.get('estadoId')?.value;
-
-    if (estadoId !== 3 || !this.isProyectoCanceladoFromSnapshot()) {
-      return null;
-    }
-
-    return { proyectoCanceladoCompletada: true };
-  }
-
-  private isProyectoCanceladoFromSnapshot(): boolean {
-    let cancelado = false;
-
-    this.proyecto$.pipe(map(proyecto => proyecto?.estadoId === 4)).subscribe(value => {
-      cancelado = value;
-    }).unsubscribe();
-
-    return cancelado;
-  }
-
   private toDateInput(value: string): string {
     return value ? value.substring(0, 10) : '';
   }
@@ -777,6 +753,13 @@ export class TareasComponent implements OnInit {
     }
 
     const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    return Number.isFinite(parsed) && parsed >= 1 && parsed <= 3 ? parsed : null;
+  }
+
+  private dispatchChangeEstado(tarea: Tarea, estadoId: number): void {
+    this.store.dispatch(TareasActions.changeEstadoTarea({
+      id: tarea.id,
+      payload: { estadoId }
+    }));
   }
 }
