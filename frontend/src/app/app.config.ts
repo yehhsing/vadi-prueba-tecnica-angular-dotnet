@@ -9,6 +9,8 @@ import { sessionReducer } from './state/session-state/redux/reducers';
 import { SessionEffects } from './state/session-state/redux/effects/session.effects';
 import { resumenReducer } from './state/resumen-state/redux/reducers';
 import { ResumenEffects } from './state/resumen-state/redux/effects/resumen.effects';
+import { proyectosReducer } from './state/proyectos-state/redux/reducers';
+import { ProyectosEffects } from './state/proyectos-state/redux/effects/proyectos.effects';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
 import { httpErrorInterceptor } from './core/interceptors/http-error.interceptor';
 import { routes } from './app.routes';
@@ -19,8 +21,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideAnimationsAsync(),
     provideHttpClient(withInterceptors([jwtInterceptor, httpErrorInterceptor])),
-    provideStore({ session: sessionReducer, resumen: resumenReducer }),
-    provideEffects([SessionEffects, ResumenEffects]),
+    provideStore({ session: sessionReducer, resumen: resumenReducer, proyectos: proyectosReducer }),
+    provideEffects([SessionEffects, ResumenEffects, ProyectosEffects]),
     provideStoreDevtools({ maxAge: 25 })
   ]
 };

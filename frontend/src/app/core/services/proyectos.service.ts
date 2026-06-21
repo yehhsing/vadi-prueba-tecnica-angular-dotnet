@@ -14,27 +14,34 @@ import {
 export class ProyectosService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/proyectos`;
+  private paths = {
+    getAll: this.base,
+    getById: (id: number) => `${this.base}/${id}`,
+    create: this.base,
+    update: (id: number) => `${this.base}/${id}`,
+    delete: (id: number) => `${this.base}/${id}`
+  };
 
   getAll(pagina: number, tamanoPagina: number): Observable<ApiResponse<PagedResult<Proyecto>>> {
     const params = new HttpParams()
       .set('pagina', String(pagina))
       .set('tamanoPagina', String(tamanoPagina));
-    return this.http.get<ApiResponse<PagedResult<Proyecto>>>(this.base, { params });
+    return this.http.get<ApiResponse<PagedResult<Proyecto>>>(this.paths.getAll, { params });
   }
 
   getById(id: number): Observable<ApiResponse<Proyecto>> {
-    return this.http.get<ApiResponse<Proyecto>>(`${this.base}/${id}`);
+    return this.http.get<ApiResponse<Proyecto>>(this.paths.getById(id));
   }
 
   create(payload: CreateProyectoRequest): Observable<ApiResponse<number>> {
-    return this.http.post<ApiResponse<number>>(this.base, payload);
+    return this.http.post<ApiResponse<number>>(this.paths.create, payload);
   }
 
   update(id: number, payload: UpdateProyectoRequest): Observable<ApiResponse<null>> {
-    return this.http.put<ApiResponse<null>>(`${this.base}/${id}`, payload);
+    return this.http.put<ApiResponse<null>>(this.paths.update(id), payload);
   }
 
   delete(id: number): Observable<ApiResponse<null>> {
-    return this.http.delete<ApiResponse<null>>(`${this.base}/${id}`);
+    return this.http.delete<ApiResponse<null>>(this.paths.delete(id));
   }
 }
