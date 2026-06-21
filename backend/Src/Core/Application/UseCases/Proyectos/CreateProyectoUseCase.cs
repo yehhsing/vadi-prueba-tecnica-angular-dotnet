@@ -13,7 +13,7 @@ namespace Application.UseCases.Proyectos
 {
     public interface ICreateProyectoUseCase : IUseCase
     {
-        Task<int> Execute(CreateProyectoRequest request);
+        Task<int> Execute(CreateProyectoRequest request, int creadoPorId);
     }
 
     internal class CreateProyectoUseCase : ICreateProyectoUseCase
@@ -27,12 +27,13 @@ namespace Application.UseCases.Proyectos
             _mapper = mapper;
         }
 
-        public async Task<int> Execute(CreateProyectoRequest request)
+        public async Task<int> Execute(CreateProyectoRequest request, int creadoPorId)
         {
             if (request.FechaFin < request.FechaInicio)
                 throw new BusinessException("La fecha fin debe ser mayor o igual a la fecha inicio.");
 
             var proyecto = _mapper.Map<Proyecto>(request);
+            proyecto.CreadoPorId = creadoPorId;
 
             return await _repo.CreateAsync(proyecto);
         }

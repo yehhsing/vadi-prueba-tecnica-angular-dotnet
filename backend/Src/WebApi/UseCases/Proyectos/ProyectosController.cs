@@ -1,5 +1,7 @@
 using Application.Common.Models;
 using Application.UseCases.Proyectos;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -57,7 +59,8 @@ public class ProyectosController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Create([FromBody] CreateProyectoRequest request)
     {
-        var id = await _createUseCase.Execute(request);
+        var creadoPorId = GetUsuarioIdFromToken();
+        var id = await _createUseCase.Execute(request, creadoPorId);
         return Ok(ApiResponse<int>.Ok(id));
     }
 
@@ -66,7 +69,7 @@ public class ProyectosController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateProyectoRequest request)
     {
         await _updateUseCase.Execute(id, request);
-        return Ok(ApiResponse<object>.Ok(null));
+        return Ok(ApiResponse<object?>.Ok(null));
     }
 
     [HttpDelete("{id:int}")]
@@ -74,6 +77,18 @@ public class ProyectosController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         await _deleteUseCase.Execute(id);
-        return Ok(ApiResponse<object>.Ok(null));
+        return Ok(ApiResponse<object?>.Ok(null));
+    }
+
+    private int GetUsuarioIdFromToken()
+    {
+        var userIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)
+            ?? User.FindFirst("sub");
+
+        if (int.TryParse(userIdClaim?.Value, out var userId))
+            return userId;
+
+        throw new UnauthorizedAccessException("No se pudo identificar el usuario autenticado.");
     }
 }

@@ -29,8 +29,7 @@ public record CreateProyectoRequest(
     string? Descripcion,
     DateTime FechaInicio,
     DateTime FechaFin,
-    int EstadoId,
-    int CreadoPorId
+    int EstadoId
 );
 
 public record UpdateProyectoRequest(
