@@ -1,5 +1,6 @@
 using Application.UseCases.Auth.Login;
 using Application.UseCases.Proyectos;
+using Application.UseCases.Tareas;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -23,6 +24,12 @@ public static class DependencyInjection
         services.AddScoped<IUpdateProyectoUseCase, UpdateProyectoUseCase>();
         services.AddScoped<IDeleteProyectoUseCase, DeleteProyectoUseCase>();
 
+        services.AddScoped<IGetTareasPagedUseCase, GetTareasPagedUseCase>();
+        services.AddScoped<IGetTareaByIdUseCase, GetTareaByIdUseCase>();
+        services.AddScoped<ICreateTareaUseCase, CreateTareaUseCase>();
+        services.AddScoped<IUpdateTareaUseCase, UpdateTareaUseCase>();
+        services.AddScoped<IDeleteTareaUseCase, DeleteTareaUseCase>();
+        services.AddScoped<IChangeEstadoTareaUseCase, ChangeEstadoTareaUseCase>();
 
         return services;
     }
