@@ -6,10 +6,19 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
 import { selectNombre, selectRol } from '../../state/session-state/redux/selectors';
 import * as SessionActions from '../../state/session-state/redux/actions/session.actions';
+import * as ResumenActions from '../../state/resumen-state/redux/actions/resumen.actions';
+import {
+  selectProyectosActivos,
+  selectResumenError,
+  selectResumenLoading,
+  selectTareasPendientes,
+  selectTareasVencidas
+} from '../../state/resumen-state/redux/selectors';
 
 // TODO: Implement the Home component.
 //
@@ -35,12 +44,13 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
-    MatChipsModule
+    MatChipsModule,
+    MatProgressSpinnerModule
   ],
   template: `
     <!-- Navigation toolbar -->
     <mat-toolbar color="primary">
-      <span class="app-title">Gestión de Proyectos</span>
+      <span class="app-title">Gestion de Proyectos</span>
       <span class="spacer"></span>
       <nav class="nav-links">
         <a mat-button routerLink="/home">
@@ -56,7 +66,7 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
         </mat-chip>
         <span class="nombre">{{ nombre$ | async }}</span>
       </span>
-      <button mat-icon-button (click)="logout()" title="Cerrar sesión">
+      <button mat-icon-button (click)="logout()" title="Cerrar sesion">
         <mat-icon>logout</mat-icon>
       </button>
     </mat-toolbar>
@@ -64,7 +74,18 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
     <!-- Main content -->
     <div class="home-container">
       <h2>Bienvenido, {{ nombre$ | async }}</h2>
-      <p class="subtitle">Panel de resumen — conecta con la API para ver los datos reales.</p>
+      <p class="subtitle">Panel de resumen conectado con la API.</p>
+
+      @if (loading$ | async) {
+        <div class="loading-row">
+          <mat-spinner diameter="32" />
+          <span>Cargando resumen...</span>
+        </div>
+      }
+
+      @if (error$ | async; as error) {
+        <p class="error-message">{{ error }}</p>
+      }
 
       <!-- TODO: Replace with real counters from NgRx store -->
       <div class="cards-row">
@@ -72,18 +93,18 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
           <mat-card-header>
             <mat-icon mat-card-avatar class="card-icon">folder_open</mat-icon>
             <mat-card-title>Proyectos Activos</mat-card-title>
-            <mat-card-subtitle>Ver todos →</mat-card-subtitle>
+            <mat-card-subtitle>Ver todos</mat-card-subtitle>
           </mat-card-header>
-          <mat-card-content><p class="counter">—</p></mat-card-content>
+          <mat-card-content><p class="counter">{{ proyectosActivos$ | async }}</p></mat-card-content>
         </mat-card>
 
         <mat-card class="summary-card warn-card">
           <mat-card-header>
             <mat-icon mat-card-avatar class="card-icon warn">warning</mat-icon>
             <mat-card-title>Tareas Vencidas</mat-card-title>
-            <mat-card-subtitle>Atención requerida</mat-card-subtitle>
+            <mat-card-subtitle>Atencion requerida</mat-card-subtitle>
           </mat-card-header>
-          <mat-card-content><p class="counter warn">—</p></mat-card-content>
+          <mat-card-content><p class="counter warn">{{ tareasVencidas$ | async }}</p></mat-card-content>
         </mat-card>
 
         <mat-card class="summary-card">
@@ -92,7 +113,7 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
             <mat-card-title>Tareas Pendientes</mat-card-title>
             <mat-card-subtitle>En cola</mat-card-subtitle>
           </mat-card-header>
-          <mat-card-content><p class="counter">—</p></mat-card-content>
+          <mat-card-content><p class="counter">{{ tareasPendientes$ | async }}</p></mat-card-content>
         </mat-card>
       </div>
     </div>
@@ -109,6 +130,8 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
     .home-container { padding: 32px 24px; }
     h2 { margin: 0 0 4px; font-size: 1.6rem; }
     .subtitle { color: #666; margin: 0 0 24px; }
+    .loading-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; color: #555; }
+    .error-message { color: #c62828; margin: 0 0 20px; }
 
     .cards-row { display: flex; gap: 16px; flex-wrap: wrap; }
     .summary-card { flex: 1; min-width: 200px; transition: box-shadow 0.2s; }
@@ -119,10 +142,20 @@ import * as SessionActions from '../../state/session-state/redux/actions/session
     .counter.warn { color: #f57c00; }
   `]
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   private store = inject(Store);
+
   nombre$: Observable<string | null> = this.store.select(selectNombre);
   rol$: Observable<string | null> = this.store.select(selectRol);
+  loading$: Observable<boolean> = this.store.select(selectResumenLoading);
+  error$: Observable<string | null> = this.store.select(selectResumenError);
+  proyectosActivos$: Observable<number> = this.store.select(selectProyectosActivos);
+  tareasVencidas$: Observable<number> = this.store.select(selectTareasVencidas);
+  tareasPendientes$: Observable<number> = this.store.select(selectTareasPendientes);
+
+  ngOnInit(): void {
+    this.store.dispatch(ResumenActions.loadResumen());
+  }
 
   logout(): void {
     this.store.dispatch(SessionActions.logout());
